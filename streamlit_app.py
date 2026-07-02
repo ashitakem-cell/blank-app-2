@@ -63,7 +63,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 🔒 SECURE BACKEND CREDENTIALS MANAGEMENT (Render Environment Support Added)
+# 🔒 SECURE BACKEND CREDENTIALS MANAGEMENT
 API_KEY = os.environ.get("GEMINI_API_KEY")
 
 if not API_KEY:
@@ -77,9 +77,9 @@ if not API_KEY:
 
 genai.configure(api_key=API_KEY)
 
-# 🛠️ MULTI-STRING AUTOMATED BACKEND INITIALIZATION
+# 🛠️ MULTI-STRING AUTOMATED BACKEND INITIALIZATION (Updated for 2026 Models)
 model = None
-model_names_to_try = ['gemini-1.5-flash', 'models/gemini-1.5-flash', 'gemini-pro']
+model_names_to_try = ['gemini-2.5-flash', 'models/gemini-2.5-flash', 'gemini-1.5-flash', 'models/gemini-1.5-flash']
 
 for name in model_names_to_try:
     try:
@@ -102,7 +102,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("💡 **Tip:** Ask the chatbot specific queries like 'Which row has highest sales?' to see its contextual brain power.")
 
-# App Header - Title changed to AI Data Analyst
+# App Header
 st.markdown('<h1 class="main-title">📊 AI Data Analyst</h1>', unsafe_allow_html=True)
 st.markdown('<p style="color: #8b949e; font-size: 1.1rem; margin-bottom: 2rem;">A fail-safe data intelligence engine built for high-performance executive analysis.</p>', unsafe_allow_html=True)
 
@@ -210,40 +210,3 @@ if uploaded_file:
             with st.chat_message("user"):
                 st.markdown(user_query)
             st.session_state.messages.append({"role": "user", "content": user_query})
-            
-            summary_stats = df.describe(include='all').to_string()
-            data_matrix_snapshot = df.head(25).to_string()
-            
-            system_context_prompt = (
-                f"SYSTEM INSTRUCTIONS:\n"
-                f"You are a highly capable, human-like Senior Data Scientist and Lead Business Intelligence Consultant. "
-                f"Your goal is to perfectly interpret user messages and provide answers like a smart human analyst. "
-                f"Do not use dry, robotic boilerplate language or repeat static generic sentences. "
-                f"Analyze the user's question explicitly using the dataset context provided below.\n\n"
-                f"DATASET MATRIX PROFILE:\n"
-                f"- Dimensions: {df.shape[0]} rows, {df.shape[1]} columns.\n"
-                f"- Column Names: {', '.join(df.columns.tolist())}\n"
-                f"- Statistical Properties Summary:\n{summary_stats}\n"
-                f"- Target Snapshot Rows (Top Sample Data):\n{data_matrix_snapshot}\n\n"
-                f"User Request: '{user_query}'\n\n"
-                f"Response (Be clear, concise, use clean formatting, state figures if asked, act professional):"
-            )
-            
-            with st.chat_message("assistant"):
-                with st.spinner("AI evaluating query patterns..."):
-                    try:
-                        chat_response = model.generate_content(system_context_prompt)
-                        clean_reply = chat_response.text
-                        st.markdown(clean_reply)
-                        st.session_state.messages.append({"role": "assistant", "content": clean_reply})
-                    except Exception as e:
-                        # Fixed fallback to display the real actual error instead of static message
-                        error_reply = f"AI API Connection Error: {str(e)}. Please verify your GEMINI_API_KEY environment configuration on Render."
-                        st.markdown(error_reply)
-                        st.session_state.messages.append({"role": "assistant", "content": error_reply})
-            
-    except Exception as e:
-        st.error(f"Ingestion Error Shield: {str(e)}")
-
-else:
-    st.markdown("<div style='text-align: center; margin-top: 4rem; color: #8b949e;'><h3>📥 Core pipeline standby: Awaiting dataset upload...</h3></div>", unsafe_allow_html=True)
