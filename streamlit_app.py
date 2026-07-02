@@ -85,20 +85,21 @@ if not API_KEY:
 
 genai.configure(api_key=API_KEY)
 
-# 🛠️ MULTI-STRING AUTOMATED BACKEND INITIALIZATION (2026 Models Setup)
+# 🛠️ MULTI-STRING AUTOMATED BACKEND INITIALIZATION (Updated Stable Strings)
 model = None
-model_names_to_try = ['gemini-2.5-flash', 'models/gemini-2.5-flash', 'gemini-1.5-flash', 'models/gemini-1.5-flash']
+model_names_to_try = ['gemini-1.5-flash', 'gemini-pro']
 
 for name in model_names_to_try:
     try:
         model = genai.GenerativeModel(name)
+        # Test connection with simple token stream
         model.generate_content("Ping")
         break
     except Exception:
         continue
 
 if model is None:
-    st.error("🚨 API Engine Resolution Failed. Check your Gemini API Key parameters inside Google AI Studio.")
+    st.error("🚨 API Engine Resolution Failed. Please check your system endpoints inside Google AI Studio.")
     st.stop()
 
 # Helper function to get clean report bytes for download
@@ -138,7 +139,7 @@ if uploaded_file:
         profit_col = next((c for c in df.columns if 'profit' in c.lower() or 'gain' in c.lower()), None)
         product_col = next((c for c in df.columns if 'product' in c.lower() or 'category' in c.lower() or 'item' in c.lower()), None)
         
-        # --- ⚡ NEW: QUICK AUTOMATED DATA BLUEPRINT SUMMARY ---
+        # --- ⚡ QUICK AUTOMATED DATA BLUEPRINT SUMMARY ---
         st.markdown('<div class="section-header">🔍 Live Data Asset Blueprint</div>', unsafe_allow_html=True)
         sum_col1, sum_col2, sum_col3 = st.columns(3)
         
@@ -168,25 +169,131 @@ if uploaded_file:
                 st.markdown(f"*- Head/Tail Range:* `1 to {len(df):,}`")
             st.markdown('</div>', unsafe_allow_html=True)
         
-        # --- EXEC EXECUTIVE KPI GRID ---
+        # --- EXEC EXECUTIVE KPI GRID (Fixed triple quotes) ---
         st.markdown('<div class="section-header">📋 Core Performance Indicators</div>', unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">TOTAL RECORDS</p><h2 style="margin:0.4rem 0 0 0;color:#58a6ff;font-size:1.8rem;">{df.shape[0]:,}</h2></div>', unsafe_allow_html=True)
+            st.markdown(f"""<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">TOTAL RECORDS</p><h2 style="margin:0.4rem 0 0 0;color:#58a6ff;font-size:1.8rem;">{df.shape[0]:,}</h2></div>""", unsafe_allow_html=True)
         with col2:
-            st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">DIMENSIONALITY</p><h2 style="margin:0.4rem 0 0 0;color:#58a6ff;font-size:1.8rem;">{df.shape[1]} Columns</h2></div>', unsafe_allow_html=True)
+            st.markdown(f"""<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">DIMENSIONALITY</p><h2 style="margin:0.4rem 0 0 0;color:#58a6ff;font-size:1.8rem;">{df.shape[1]} Columns</h2></div>""", unsafe_allow_html=True)
         
         with col3:
             if sales_col:
-                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">GROSS VOLUME</p><h2 style="margin:0.4rem 0 0 0;color:#34d399;font-size:1.6rem;">₹{df[sales_col].sum():,.2f}</h2></div>', unsafe_allow_html=True)
+                st.markdown(f"""<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">GROSS VOLUME</p><h2 style="margin:0.4rem 0 0 0;color:#34d399;font-size:1.6rem;">₹{df[sales_col].sum():,.2f}</h2></div>""", unsafe_allow_html=True)
             elif len(numeric_cols) > 0:
-                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">AGGREGATE ({numeric_cols[0]})</p><h2 style="margin:0.4rem 0 0 0;color:#34d399;font-size:1.6rem;">{df[numeric_cols[0]].sum():,}</h2></div>', unsafe_allow_html=True)
+                st.markdown(f"""<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">AGGREGATE ({numeric_cols[0]})</p><h2 style="margin:0.4rem 0 0 0;color:#34d399;font-size:1.6rem;">{df[numeric_cols[0]].sum():,}</h2></div>""", unsafe_allow_html=True)
             else:
-                st.markdown('<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">GROSS VOLUME</p><h2 style="margin:0.4rem 0 0 0;color:#8b949e;font-size:1.6rem;">N/A</h2></div>', unsafe_allow_html=True)
+                st.markdown("""<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">GROSS VOLUME</p><h2 style="margin:0.4rem 0 0 0;color:#8b949e;font-size:1.6rem;">N/A</h2></div>""", unsafe_allow_html=True)
                 
         with col4:
             if profit_col:
-                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">OPERATIONAL PROFIT</p><h2 style="margin:0.4rem 0 0 0;color:#ff7b72;font-size:1.6rem;">₹{df[profit_col].sum():,.2f}</h2></div>', unsafe_allow_html=True)
+                st.markdown(f"""<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">OPERATIONAL PROFIT</p><h2 style="margin:0.4rem 0 0 0;color:#ff7b72;font-size:1.6rem;">₹{df[profit_col].sum():,.2f}</h2></div>""", unsafe_allow_html=True)
             elif product_col and not df[product_col].empty:
-                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">DOMINANT CLASS</p><h2 style="margin:0.4rem 0 0 0;color:#ff7b72;font-size
+                st.markdown(f"""<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">DOMINANT CLASS</p><h2 style="margin:0.4rem 0 0 0;color:#ff7b72;font-size:1.4rem;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;">{df[product_col].mode()[0]}</h2></div>""", unsafe_allow_html=True)
+            else:
+                st.markdown("""<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">OPERATIONAL INSIGHT</p><h2 style="margin:0.4rem 0 0 0;color:#8b949e;font-size:1.6rem;">N/A</h2></div>""", unsafe_allow_html=True)
+
+        st.markdown("<h4 style='margin-top: 1.5rem; color:#f0f6fc;'>Ingested Spreadsheet Grid Snippet</h4>", unsafe_allow_html=True)
+        st.dataframe(df.head(6), use_container_width=True)
+        
+        # --- INTERACTIVE PLOTLY CHARTS GENERATOR ---
+        st.markdown('<div class="section-header">📊 Dynamic Interactive Trend Matrix</div>', unsafe_allow_html=True)
+        chart_c1, chart_c2 = st.columns(2)
+        
+        cat_target = product_col if product_col else (text_cols[0] if len(text_cols) > 0 else df.columns[0])
+        num_target = sales_col if sales_col else (numeric_cols[0] if len(numeric_cols) > 0 else None)
+        
+        with chart_c1:
+            if num_target and cat_target:
+                chart_data = df.groupby(cat_target)[num_target].sum().reset_index().sort_values(by=num_target, ascending=False).head(10)
+                fig1 = px.bar(chart_data, x=cat_target, y=num_target, title=f"Top Distributions by {cat_target}", color=num_target, template="plotly_dark")
+                st.plotly_chart(fig1, use_container_width=True)
+            else:
+                chart_data = df[cat_target].value_counts().reset_index().head(10)
+                fig1 = px.bar(chart_data, x=cat_target, y="count", title=f"Frequency Count of {cat_target}", template="plotly_dark")
+                st.plotly_chart(fig1, use_container_width=True)
+                
+        with chart_c2:
+            if len(numeric_cols) > 0:
+                fig2 = px.line(df.head(100), y=numeric_cols[0], title=f"Sequential Profile Matrix ({numeric_cols[0]})", template="plotly_dark", render_mode="svg")
+                st.plotly_chart(fig2, use_container_width=True)
+            else:
+                st.info("Continuous quantitative values missing. Trendline generation bypassed safely.")
+
+        # --- EXECUTIVE AI SUMMARY REPORT & DOWNLOAD BUTTON ---
+        st.markdown('<div class="section-header">🧠 Automated AI Insight Report</div>', unsafe_allow_html=True)
+        if "auto_summary" not in st.session_state:
+            with st.spinner("AI Engine auditing matrix patterns safely..."):
+                try:
+                    sample_str = df.head(15).to_string(index=False)
+                    summary_prompt = (
+                        f"You are a World-Class Chief Data Analytics Officer. Review this enterprise dataset summary information. "
+                        f"Provide a beautifully structured report using neat markdown bullets. Key areas: Principal Findings, "
+                        f"and Executive Strategic Action Plan. Ingested Data Context:\n{sample_str}"
+                    )
+                    response = model.generate_content(summary_prompt)
+                    st.session_state.auto_summary = response.text
+                except Exception as e:
+                    st.session_state.auto_summary = f"Automated reporting temporary backup. Error details: {str(e)}"
+        
+        st.markdown(st.session_state.auto_summary)
+        
+        # Working Text-Report Download Button Setup
+        report_data = get_report_bytes(st.session_state.auto_summary)
+        st.download_button(
+            label="📥 Download Executive Summary Report",
+            data=report_data,
+            file_name="Executive_AI_Data_Report.txt",
+            mime="text/plain"
+        )
+
+        # --- 💬 SUPER-INTELLIGENT DYNAMIC CONVERSATION AGENT ---
+        st.markdown('<div class="section-header">💬 Chat Directly With Your Data Studio</div>', unsafe_allow_html=True)
+        
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+            
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+                
+        if user_query := st.chat_input("Ask any analytical question or ask to explain rows..."):
+            with st.chat_message("user"):
+                st.markdown(user_query)
+            st.session_state.messages.append({"role": "user", "content": user_query})
+            
+            summary_stats = df.describe(include='all').to_string()
+            data_matrix_snapshot = df.head(25).to_string()
+            
+            system_context_prompt = (
+                f"SYSTEM INSTRUCTIONS:\n"
+                f"You are a highly capable, human-like Senior Data Scientist and Lead Business Intelligence Consultant. "
+                f"Your goal is to perfectly interpret user messages and provide answers like a smart human analyst. "
+                f"Analyze the user's question explicitly using the dataset context provided below.\n\n"
+                f"DATASET MATRIX PROFILE:\n"
+                f"- Dimensions: {df.shape[0]} rows, {df.shape[1]} columns.\n"
+                f"- Column Names: {', '.join(df.columns.tolist())}\n"
+                f"- Statistical Properties Summary:\n{summary_stats}\n"
+                f"- Target Snapshot Rows (Top Sample Data):\n{data_matrix_snapshot}\n\n"
+                f"User Request: '{user_query}'\n\n"
+                f"Response (Be clear, concise, use clean formatting, state figures if asked, act professional):"
+            )
+            
+            with st.chat_message("assistant"):
+                with st.spinner("AI evaluating query patterns..."):
+                    try:
+                        chat_response = model.generate_content(system_context_prompt)
+                        clean_reply = chat_response.text
+                        st.markdown(clean_reply)
+                        st.session_state.messages.append({"role": "assistant", "content": clean_reply})
+                    except Exception as e:
+                        error_reply = f"AI API Connection Error: {str(e)}. Please verify your GEMINI_API_KEY environment configuration on Render."
+                        st.markdown(error_reply)
+                        st.session_state.messages.append({"role": "assistant", "content": error_reply})
+            
+    except Exception as e:
+        st.error(f"Ingestion Error Shield: {str(e)}")
+
+else:
+    st.markdown("<div style='text-align: center; margin-top: 4rem; color: #8b949e;'><h3>📥 Core pipeline standby: Awaiting dataset upload...</h3></div>", unsafe_allow_html=True)
