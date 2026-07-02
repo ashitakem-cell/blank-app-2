@@ -2,16 +2,19 @@ import os
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
+import plotly.express as px
+from fpdf import FPDF
+import io
 
-# Page configuration - Updated Title to AI Data Analyst
+# Page configuration - Premium Analytics Theme
 st.set_page_config(
-    page_title="AI Data Analyst",
+    page_title="AI Data Analyst Pro",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling Matrix (Premium Interface Setup)
+# Custom Styling Matrix (Premium Dark Interface Setup)
 st.markdown("""
     <style>
     .stApp {
@@ -54,7 +57,6 @@ st.markdown("""
         border: 1px solid #30363d !important;
         background-color: #161b22 !important;
         border-radius: 10px !important;
-        box-shadow: none !important;
     }
     div[data-testid="stChatInputContainer"]:focus-within, div[data-testid="stTextInput"] > div:focus-within {
         border-color: #58a6ff !important;
@@ -77,7 +79,7 @@ if not API_KEY:
 
 genai.configure(api_key=API_KEY)
 
-# 🛠️ MULTI-STRING AUTOMATED BACKEND INITIALIZATION (Updated for 2026 Models)
+# 🛠️ MULTI-STRING AUTOMATED BACKEND INITIALIZATION (2026 Models Setup)
 model = None
 model_names_to_try = ['gemini-2.5-flash', 'models/gemini-2.5-flash', 'gemini-1.5-flash', 'models/gemini-1.5-flash']
 
@@ -93,18 +95,39 @@ if model is None:
     st.error("🚨 API Engine Resolution Failed. Check your Gemini API Key parameters inside Google AI Studio.")
     st.stop()
 
+# Helper function to generate a clean PDF byte-stream
+def create_pdf(text_content):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Helvetica", size=12)
+    
+    # Title
+    pdf.set_text_color(88, 166, 255)
+    pdf.cell(200, 10, txt="AI Data Analyst - Executive Strategic Report", ln=True, align='C')
+    pdf.ln(10)
+    
+    # Body Content
+    pdf.set_text_color(30, 30, 30)
+    # Cleaning up markdown formatting markers for PDF safety
+    clean_text = text_content.replace("**", "").replace("*", "-")
+    
+    for line in clean_text.split('\n'):
+        pdf.multi_cell(0, 7, txt=line.encode('latin-1', 'replace').decode('latin-1'))
+    
+    return pdf.output()
+
 # Clean Sidebar Dashboard Control
 with st.sidebar:
     st.markdown("<h2 style='color:#fff; font-size: 1.6rem;'>⚙️ Control Center</h2>", unsafe_allow_html=True)
     st.markdown("---")
     st.markdown("### 📊 Engine Infrastructure")
-    st.success("Super-Intelligence Matrix: Loaded")
+    st.success("Super-Intelligence Matrix: Active")
     st.markdown("---")
-    st.markdown("💡 **Tip:** Ask the chatbot specific queries like 'Which row has highest sales?' to see its contextual brain power.")
+    st.markdown("💡 **Tip:** Hover on charts to filter, isolate, or view exact metrics interactively!")
 
 # App Header
-st.markdown('<h1 class="main-title">📊 AI Data Analyst</h1>', unsafe_allow_html=True)
-st.markdown('<p style="color: #8b949e; font-size: 1.1rem; margin-bottom: 2rem;">A fail-safe data intelligence engine built for high-performance executive analysis.</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">📊 AI Data Analyst Pro</h1>', unsafe_allow_html=True)
+st.markdown('<p style="color: #8b949e; font-size: 1.1rem; margin-bottom: 2rem;">An advanced enterprise data intelligence studio featuring interactive charts and automated reporting.</p>', unsafe_allow_html=True)
 
 st.markdown('<div class="section-header">📂 Ingest Spreadsheet Matrix</div>', unsafe_allow_html=True)
 uploaded_file = st.file_uploader("", type=["csv", "xlsx"])
@@ -153,8 +176,8 @@ if uploaded_file:
         st.markdown("<h4 style='margin-top: 1.5rem; color:#f0f6fc;'>Ingested Spreadsheet Grid Snippet</h4>", unsafe_allow_html=True)
         st.dataframe(df.head(6), use_container_width=True)
         
-        # --- AUTOMATIC CHART VISUALIZATIONS GENERATOR ---
-        st.markdown('<div class="section-header">📊 Automatic Fail-Safe Data Trends</div>', unsafe_allow_html=True)
+        # --- FEATURE 1: INTERACTIVE PLOTLY CHARTS GENERATOR ---
+        st.markdown('<div class="section-header">📊 Dynamic Interactive Trend Matrix</div>', unsafe_allow_html=True)
         chart_c1, chart_c2 = st.columns(2)
         
         cat_target = product_col if product_col else (text_cols[0] if len(text_cols) > 0 else df.columns[0])
@@ -162,22 +185,22 @@ if uploaded_file:
         
         with chart_c1:
             if num_target and cat_target:
-                st.markdown(f"**📈 Categorical Density Breakdown by {cat_target}**")
-                chart_data = df.groupby(cat_target)[num_target].sum().sort_values(ascending=False).head(10)
-                st.bar_chart(chart_data)
+                chart_data = df.groupby(cat_target)[num_target].sum().reset_index().sort_values(by=num_target, ascending=False).head(10)
+                fig1 = px.bar(chart_data, x=cat_target, y=num_target, title=f"Top Distributions by {cat_target}", color=num_target, template="plotly_dark")
+                st.plotly_chart(fig1, use_container_width=True)
             else:
-                st.markdown(f"**📈 Structural Entity Frequency Count ({cat_target})**")
-                chart_data = df[cat_target].value_counts().head(10)
-                st.bar_chart(chart_data)
+                chart_data = df[cat_target].value_counts().reset_index().head(10)
+                fig1 = px.bar(chart_data, x=cat_target, y="count", title=f"Frequency Count of {cat_target}", template="plotly_dark")
+                st.plotly_chart(fig1, use_container_width=True)
                 
         with chart_c2:
             if len(numeric_cols) > 0:
-                st.markdown(f"**📉 Sequential Value Flow Profile ({numeric_cols[0]})**")
-                st.line_chart(df[numeric_cols[0]].head(60))
+                fig2 = px.line(df.head(100), y=numeric_cols[0], title=f"Sequential Profile Matrix ({numeric_cols[0]})", template="plotly_dark", render_mode="svg")
+                st.plotly_chart(fig2, use_container_width=True)
             else:
                 st.info("Continuous quantitative values missing. Trendline generation bypassed safely.")
 
-        # --- EXECUTIVE AI SUMMARY REPORT ---
+        # --- EXECUTIVE AI SUMMARY REPORT & FEATURE 4: PDF DOWNLOAD ---
         st.markdown('<div class="section-header">🧠 Automated AI Insight Report</div>', unsafe_allow_html=True)
         if "auto_summary" not in st.session_state:
             with st.spinner("AI Engine auditing matrix patterns safely..."):
@@ -194,10 +217,21 @@ if uploaded_file:
                     st.session_state.auto_summary = f"Automated reporting temporary backup. Error details: {str(e)}"
         
         st.markdown(st.session_state.auto_summary)
+        
+        # Feature 4: Creating PDF Trigger Box
+        try:
+            pdf_bytes = create_pdf(st.session_state.auto_summary)
+            st.download_button(
+                label="📥 Download Executive Summary (PDF)",
+                data=pdf_bytes,
+                file_name="Executive_AI_Data_Report.pdf",
+                mime="application/pdf"
+            )
+        except Exception as pdf_err:
+            st.warning(f"PDF compilation bridge idling: {str(pdf_err)}")
 
         # --- 💬 SUPER-INTELLIGENT DYNAMIC CONVERSATION AGENT ---
         st.markdown('<div class="section-header">💬 Chat Directly With Your Data Studio</div>', unsafe_allow_html=True)
-        st.markdown("<p style='color:#8b949e; font-size:0.95rem; margin-bottom:1rem;'>Have questions? Our super intelligent data scientist chatbot understands anything you say about this sheet.</p>", unsafe_allow_html=True)
         
         if "messages" not in st.session_state:
             st.session_state.messages = []
@@ -218,7 +252,6 @@ if uploaded_file:
                 f"SYSTEM INSTRUCTIONS:\n"
                 f"You are a highly capable, human-like Senior Data Scientist and Lead Business Intelligence Consultant. "
                 f"Your goal is to perfectly interpret user messages and provide answers like a smart human analyst. "
-                f"Do not use dry, robotic boilerplate language or repeat static generic sentences. "
                 f"Analyze the user's question explicitly using the dataset context provided below.\n\n"
                 f"DATASET MATRIX PROFILE:\n"
                 f"- Dimensions: {df.shape[0]} rows, {df.shape[1]} columns.\n"
