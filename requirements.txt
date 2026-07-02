@@ -3,4 +3,5 @@ pandas
 openpyxl
 google-generativeai
 plotly
-fpdf2
+python-docx
+matplotlib
