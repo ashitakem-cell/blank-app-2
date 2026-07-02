@@ -1,10 +1,11 @@
+import os
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
 
-# Page configuration - Premium Corporate Theme
+# Page configuration - Updated Title to AI Data Analyst
 st.set_page_config(
-    page_title="Enterprise AI Insights Studio",
+    page_title="AI Data Analyst",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -62,20 +63,23 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 🔒 SECURE BACKEND CREDENTIALS MANAGEMENT
-if "GEMINI_API_KEY" in st.secrets:
-    API_KEY = st.secrets["GEMINI_API_KEY"]
-elif "google_api_key" in st.secrets: 
-    API_KEY = st.secrets["google_api_key"]
-else:
-    st.error("🔒 Configuration Error: Please ensure 'GEMINI_API_KEY' is active in Streamlit Cloud Secrets.")
-    st.stop()
+# 🔒 SECURE BACKEND CREDENTIALS MANAGEMENT (Render Environment Support Added)
+API_KEY = os.environ.get("GEMINI_API_KEY")
+
+if not API_KEY:
+    if "GEMINI_API_KEY" in st.secrets:
+        API_KEY = st.secrets["GEMINI_API_KEY"]
+    elif "google_api_key" in st.secrets: 
+        API_KEY = st.secrets["google_api_key"]
+    else:
+        st.error("🔒 Configuration Error: Please ensure 'GEMINI_API_KEY' is active in Render or Streamlit Secrets.")
+        st.stop()
 
 genai.configure(api_key=API_KEY)
 
 # 🛠️ MULTI-STRING AUTOMATED BACKEND INITIALIZATION
 model = None
-model_names_to_try = ['models/gemini-1.5-flash', 'gemini-1.5-flash', 'models/gemini-pro', 'gemini-pro']
+model_names_to_try = ['gemini-1.5-flash', 'models/gemini-1.5-flash', 'gemini-pro']
 
 for name in model_names_to_try:
     try:
@@ -98,8 +102,8 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("💡 **Tip:** Ask the chatbot specific queries like 'Which row has highest sales?' to see its contextual brain power.")
 
-# App Header
-st.markdown('<h1 class="main-title">📊 Enterprise AI Insights Studio</h1>', unsafe_allow_html=True)
+# App Header - Title changed to AI Data Analyst
+st.markdown('<h1 class="main-title">📊 AI Data Analyst</h1>', unsafe_allow_html=True)
 st.markdown('<p style="color: #8b949e; font-size: 1.1rem; margin-bottom: 2rem;">A fail-safe data intelligence engine built for high-performance executive analysis.</p>', unsafe_allow_html=True)
 
 st.markdown('<div class="section-header">📂 Ingest Spreadsheet Matrix</div>', unsafe_allow_html=True)
@@ -186,8 +190,8 @@ if uploaded_file:
                     )
                     response = model.generate_content(summary_prompt)
                     st.session_state.auto_summary = response.text
-                except Exception:
-                    st.session_state.auto_summary = f"Automated reporting backup active. Matrix metadata parsed: {len(df.columns)} active variables discovered."
+                except Exception as e:
+                    st.session_state.auto_summary = f"Automated reporting temporary backup. Error details: {str(e)}"
         
         st.markdown(st.session_state.auto_summary)
 
@@ -233,13 +237,13 @@ if uploaded_file:
                         st.markdown(clean_reply)
                         st.session_state.messages.append({"role": "assistant", "content": clean_reply})
                     except Exception as e:
-                        backup_reply = f"I've evaluated the layout parameters. Your dataset contains {df.shape[0]} tracking entities with explicit variables across {df.shape[1]} columns. Please target a specific structural trend column name like {df.columns[0]}!"
-                        st.markdown(backup_reply)
-                        st.session_state.messages.append({"role": "assistant", "content": backup_reply})
+                        # Fixed fallback to display the real actual error instead of static message
+                        error_reply = f"AI API Connection Error: {str(e)}. Please verify your GEMINI_API_KEY environment configuration on Render."
+                        st.markdown(error_reply)
+                        st.session_state.messages.append({"role": "assistant", "content": error_reply})
             
     except Exception as e:
         st.error(f"Ingestion Error Shield: {str(e)}")
 
 else:
     st.markdown("<div style='text-align: center; margin-top: 4rem; color: #8b949e;'><h3>📥 Core pipeline standby: Awaiting dataset upload...</h3></div>", unsafe_allow_html=True)
-    # Yahan aap apna baaki ka AI logic add kar sakti hain
