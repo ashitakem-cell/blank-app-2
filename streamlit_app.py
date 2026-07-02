@@ -206,7 +206,43 @@ if uploaded_file:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
                 
-        if user_query := st.chat_input("Ask any analytical question or ask to explain rows..."):
+      if user_query := st.chat_input("Ask any analytical question or ask to explain rows..."):
             with st.chat_message("user"):
                 st.markdown(user_query)
             st.session_state.messages.append({"role": "user", "content": user_query})
+            
+            summary_stats = df.describe(include='all').to_string()
+            data_matrix_snapshot = df.head(25).to_string()
+            
+            system_context_prompt = (
+                f"SYSTEM INSTRUCTIONS:\n"
+                f"You are a highly capable, human-like Senior Data Scientist and Lead Business Intelligence Consultant. "
+                f"Your goal is to perfectly interpret user messages and provide answers like a smart human analyst. "
+                f"Do not use dry, robotic boilerplate language or repeat static generic sentences. "
+                f"Analyze the user's question explicitly using the dataset context provided below.\n\n"
+                f"DATASET MATRIX PROFILE:\n"
+                f"- Dimensions: {df.shape[0]} rows, {df.shape[1]} columns.\n"
+                f"- Column Names: {', '.join(df.columns.tolist())}\n"
+                f"- Statistical Properties Summary:\n{summary_stats}\n"
+                f"- Target Snapshot Rows (Top Sample Data):\n{data_matrix_snapshot}\n\n"
+                f"User Request: '{user_query}'\n\n"
+                f"Response (Be clear, concise, use clean formatting, state figures if asked, act professional):"
+            )
+            
+            with st.chat_message("assistant"):
+                with st.spinner("AI evaluating query patterns..."):
+                    try:
+                        chat_response = model.generate_content(system_context_prompt)
+                        clean_reply = chat_response.text
+                        st.markdown(clean_reply)
+                        st.session_state.messages.append({"role": "assistant", "content": clean_reply})
+                    except Exception as e:
+                        error_reply = f"AI API Connection Error: {str(e)}. Please verify your GEMINI_API_KEY environment configuration on Render."
+                        st.markdown(error_reply)
+                        st.session_state.messages.append({"role": "assistant", "content": error_reply})
+            
+    except Exception as e:
+        st.error(f"Ingestion Error Shield: {str(e)}")
+
+else:
+    st.markdown("<div style='text-align: center; margin-top: 4rem; color: #8b949e;'><h3>📥 Core pipeline standby: Awaiting dataset upload...</h3></div>", unsafe_allow_html=True)
