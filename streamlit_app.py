@@ -1,11 +1,13 @@
 import os
 import streamlit as st
 import pandas as pd
+import numpy as np
 import google.generativeai as genai
 import plotly.express as px
 import matplotlib.pyplot as plt
 from docx import Document
 from docx.shared import Inches
+from sklearn.linear_model import LinearRegression
 import io
 
 # Page configuration - Premium Analytics Theme
@@ -60,10 +62,6 @@ st.markdown("""
         background-color: #161b22 !important;
         border-radius: 10px !important;
     }
-    div[data-testid="stChatInputContainer"]:focus-within, div[data-testid="stTextInput"] > div:focus-within {
-        border-color: #58a6ff !important;
-        box-shadow: 0 0 0 1px #58a6ff !important;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -73,8 +71,6 @@ API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
     if "GEMINI_API_KEY" in st.secrets:
         API_KEY = st.secrets["GEMINI_API_KEY"]
-    elif "google_api_key" in st.secrets: 
-        API_KEY = st.secrets["google_api_key"]
     else:
         st.error("🔒 Configuration Error: Please ensure 'GEMINI_API_KEY' is active in Render or Streamlit Secrets.")
         st.stop()
@@ -94,7 +90,7 @@ for name in model_names_to_try:
         continue
 
 if model is None:
-    st.error("🚨 API Engine Resolution Failed. Check your Gemini API Key parameters inside Google AI Studio.")
+    st.error("🚨 API Engine Resolution Failed.")
     st.stop()
 
 # Helper function to generate .xlsx file bytes
@@ -109,12 +105,10 @@ def create_docx_report(text_content, dataframe, cat_col, num_col, numeric_cols):
     doc = Document()
     doc.add_heading('Executive Data Summary Report', 0)
     
-    # Adding AI Summary text
     doc.add_heading('AI Strategic Insights', level=1)
     clean_text = text_content.replace("**", "").replace("### ", "").replace("## ", "")
     doc.add_paragraph(clean_text)
     
-    # Generate and append a visual chart inside word safely
     if cat_col and num_col:
         doc.add_heading('Data Visualization Chart Matrix 1', level=1)
         plt.figure(figsize=(6, 4))
@@ -153,11 +147,10 @@ with st.sidebar:
     st.markdown("### 📊 Engine Infrastructure")
     st.success("Super-Intelligence Matrix: Active")
     st.markdown("---")
-    st.markdown("💡 **Tip:** Hover on charts to filter, isolate, or view exact metrics interactively!")
 
 # App Header
 st.markdown('<h1 class="main-title">📊 AI Data Analyst Pro</h1>', unsafe_allow_html=True)
-st.markdown('<p style="color: #8b949e; font-size: 1.1rem; margin-bottom: 2rem;">An advanced enterprise data intelligence studio featuring interactive charts and automated reporting.</p>', unsafe_allow_html=True)
+st.markdown('<p style="color: #8b949e; font-size: 1.1rem; margin-bottom: 2rem;">An advanced enterprise data intelligence studio featuring interactive charts, forecasting, and data auditing.</p>', unsafe_allow_html=True)
 
 st.markdown('<div class="section-header">📂 Ingest Spreadsheet Matrix</div>', unsafe_allow_html=True)
 uploaded_file = st.file_uploader("", type=["csv", "xlsx"])
@@ -171,6 +164,30 @@ if uploaded_file:
             
         df.columns = df.columns.str.strip()
         
+        # --- FEATURE 3: DATA QUALITY AUDITOR & AUTO-CLEAN ---
+        st.markdown('<div class="section-header">🩺 Data Health Auditor</div>', unsafe_allow_html=True)
+        total_missing = df.isnull().sum().sum()
+        total_cells = df.size
+        missing_percent = (total_missing / total_cells) * 100 if total_cells > 0 else 0
+        
+        aud1, aud2 = st.columns(2)
+        with aud1:
+            if total_missing == 0:
+                st.success("🎉 Perfect Data Health! No missing values detected inside the matrix.")
+            else:
+                st.warning(f"⚠️ Warning: Found {total_missing} missing/blank cells ({missing_percent:.2f}% of dataset).")
+        with aud2:
+            if total_missing > 0:
+                if st.button("🧼 Run Automatic Data Clean Pipeline"):
+                    # Auto imputation: fill missing numbers with mean, text with mode
+                    for col in df.columns:
+                        if df[col].dtype in ['int64', 'float64']:
+                            df[col] = df[col].fillna(df[col].mean())
+                        else:
+                            df[col] = df[col].fillna(df[col].mode()[0] if not df[col].mode().empty else "Unknown")
+                    st.success("✅ Clean Complete! All missing cells successfully treated.")
+                    st.rerun()
+
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
         text_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
         
@@ -178,68 +195,106 @@ if uploaded_file:
         profit_col = next((c for c in df.columns if 'profit' in c.lower() or 'gain' in c.lower()), None)
         product_col = next((c for c in df.columns if 'product' in c.lower() or 'category' in c.lower() or 'item' in c.lower()), None)
         
+        cat_target = product_col if product_col else (text_cols[0] if len(text_cols) > 0 else df.columns[0])
+        num_target = sales_col if sales_col else (numeric_cols[0] if len(numeric_cols) > 0 else None)
+
+        # --- FEATURE 1: ADVANCED MULTI-COLUMN FILTERING (SIDEBAR CONTROLS) ---
+        with st.sidebar:
+            st.markdown("### 🔍 Live Data Filter Center")
+            selected_cat = "All"
+            if len(text_cols) > 0:
+                filter_col = text_cols[0]
+                unique_vals = ["All"] + df[filter_col].dropna().unique().tolist()
+                selected_cat = st.selectbox(f"Filter by {filter_col}:", unique_vals)
+                
+        # Applying the live filter safely
+        filtered_df = df.copy()
+        if selected_cat != "All":
+            filtered_df = df[df[filter_col] == selected_cat]
+
         # --- EXEC EXECUTIVE KPI GRID ---
         st.markdown('<div class="section-header">📋 Core Performance Indicators</div>', unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">TOTAL RECORDS</p><h2 style="margin:0.4rem 0 0 0;color:#58a6ff;font-size:1.8rem;">{df.shape[0]:,}</h2></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">TOTAL RECORDS</p><h2 style="margin:0.4rem 0 0 0;color:#58a6ff;font-size:1.8rem;">{filtered_df.shape[0]:,}</h2></div>', unsafe_allow_html=True)
         with col2:
-            st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">DIMENSIONALITY</p><h2 style="margin:0.4rem 0 0 0;color:#58a6ff;font-size:1.8rem;">{df.shape[1]} Columns</h2></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">DIMENSIONALITY</p><h2 style="margin:0.4rem 0 0 0;color:#58a6ff;font-size:1.8rem;">{filtered_df.shape[1]} Columns</h2></div>', unsafe_allow_html=True)
         
         with col3:
-            if sales_col:
-                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">GROSS VOLUME</p><h2 style="margin:0.4rem 0 0 0;color:#34d399;font-size:1.6rem;">₹{df[sales_col].sum():,.2f}</h2></div>', unsafe_allow_html=True)
-            elif len(numeric_cols) > 0:
-                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">AGGREGATE ({numeric_cols[0]})</p><h2 style="margin:0.4rem 0 0 0;color:#34d399;font-size:1.6rem;">{df[numeric_cols[0]].sum():,}</h2></div>', unsafe_allow_html=True)
+            if num_target:
+                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">GROSS VOLUME</p><h2 style="margin:0.4rem 0 0 0;color:#34d399;font-size:1.6rem;">₹{filtered_df[num_target].sum():,.2f}</h2></div>', unsafe_allow_html=True)
             else:
                 st.markdown('<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">GROSS VOLUME</p><h2 style="margin:0.4rem 0 0 0;color:#8b949e;font-size:1.6rem;">N/A</h2></div>', unsafe_allow_html=True)
                 
         with col4:
             if profit_col:
-                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">OPERATIONAL PROFIT</p><h2 style="margin:0.4rem 0 0 0;color:#ff7b72;font-size:1.6rem;">₹{df[profit_col].sum():,.2f}</h2></div>', unsafe_allow_html=True)
-            elif product_col and not df[product_col].empty:
-                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">DOMINANT CLASS</p><h2 style="margin:0.4rem 0 0 0;color:#ff7b72;font-size:1.4rem;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;">{df[product_col].mode()[0]}</h2></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">OPERATIONAL PROFIT</p><h2 style="margin:0.4rem 0 0 0;color:#ff7b72;font-size:1.6rem;">₹{filtered_df[profit_col].sum():,.2f}</h2></div>', unsafe_allow_html=True)
+            elif cat_target and not filtered_df[cat_target].empty:
+                st.markdown(f'<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">DOMINANT CLASS</p><h2 style="margin:0.4rem 0 0 0;color:#ff7b72;font-size:1.4rem;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;">{filtered_df[cat_target].mode()[0]}</h2></div>', unsafe_allow_html=True)
             else:
                 st.markdown('<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">OPERATIONAL INSIGHT</p><h2 style="margin:0.4rem 0 0 0;color:#8b949e;font-size:1.6rem;">N/A</h2></div>', unsafe_allow_html=True)
 
-        st.markdown("<h4 style='margin-top: 1.5rem; color:#f0f6fc;'>Ingested Spreadsheet Grid Snippet</h4>", unsafe_allow_html=True)
-        st.dataframe(df.head(6), use_container_width=True)
+        st.dataframe(filtered_df.head(6), use_container_width=True)
         
-        # --- 📊 DYNAMIC INTERACTIVE TREND MATRIX (SIDE-BY-SIDE 2 GRAPH LAYOUT) ---
-        st.markdown('<div class="section-header">📊 Dynamic Interactive Trend Matrix</div>', unsafe_allow_html=True)
+        # --- 📊 FEATURE 2: DYNAMIC CHARTS & PREDICTIVE FORECASTING ---
+        st.markdown('<div class="section-header">📊 Dynamic Interactive Trend Matrix & ML Forecast</div>', unsafe_allow_html=True)
         chart_c1, chart_c2 = st.columns(2)
-        
-        cat_target = product_col if product_col else (text_cols[0] if len(text_cols) > 0 else df.columns[0])
-        num_target = sales_col if sales_col else (numeric_cols[0] if len(numeric_cols) > 0 else None)
         
         with chart_c1:
             if num_target and cat_target:
-                chart_data = df.groupby(cat_target)[num_target].sum().reset_index().sort_values(by=num_target, ascending=False).head(10)
+                chart_data = filtered_df.groupby(cat_target)[num_target].sum().reset_index().sort_values(by=num_target, ascending=False).head(10)
                 fig1 = px.bar(chart_data, x=cat_target, y=num_target, title=f"Top Distributions by {cat_target}", color=num_target, template="plotly_dark")
                 st.plotly_chart(fig1, use_container_width=True)
             else:
-                chart_data = df[cat_target].value_counts().reset_index().head(10)
+                chart_data = filtered_df[cat_target].value_counts().reset_index().head(10)
                 fig1 = px.bar(chart_data, x=cat_target, y="count", title=f"Frequency Count of {cat_target}", template="plotly_dark")
                 st.plotly_chart(fig1, use_container_width=True)
                 
         with chart_c2:
             if len(numeric_cols) > 0:
-                fig2 = px.line(df.head(100), y=numeric_cols[0], title=f"Sequential Profile Matrix ({numeric_cols[0]})", template="plotly_dark")
+                trend_data = filtered_df.head(100).copy().reset_index()
+                fig2 = px.line(trend_data, y=numeric_cols[0], title=f"Live Trend Line ({numeric_cols[0]})", template="plotly_dark")
+                
+                # Applying ML Linear Regression for Forecasting (Next 15 steps prediction)
+                try:
+                    X = np.array(trend_data.index).reshape(-1, 1)
+                    y = trend_data[numeric_cols[0]].values
+                    reg_model = LinearRegression().fit(X, y)
+                    
+                    future_indices = np.array(range(len(trend_data), len(trend_data) + 15)).reshape(-1, 1)
+                    predictions = reg_model.predict(future_indices)
+                    
+                    forecast_df = pd.DataFrame({
+                        'Future Index': future_indices.flatten(),
+                        'Forecasted Trend': predictions
+                    })
+                    
+                    # Adding the predictive trend line onto the interactive chart
+                    fig2.add_scatter(x=forecast_df['Future Index'], y=forecast_df['Forecasted Trend'], mode='lines', name='ML Forecast Line', line=dict(dash='dash', color='#f2ea79'))
+                except:
+                    pass
+                    
                 st.plotly_chart(fig2, use_container_width=True)
             else:
                 st.info("Continuous quantitative values missing. Trendline generation bypassed safely.")
 
         # --- EXECUTIVE AI SUMMARY REPORT ---
         st.markdown('<div class="section-header">🧠 Automated AI Insight Report</div>', unsafe_allow_html=True)
+        
+        # Triggering a re-generation if a filter changes to keep report accurate
+        if "last_filter" not in st.session_state or st.session_state.last_filter != selected_cat:
+            st.session_state.last_filter = selected_cat
+            if "auto_summary" in st.session_state: del st.session_state.auto_summary
+
         if "auto_summary" not in st.session_state:
             with st.spinner("AI Engine auditing matrix patterns..."):
                 try:
-                    sample_str = df.head(15).to_string(index=False)
+                    sample_str = filtered_df.head(15).to_string(index=False)
                     summary_prompt = (
-                        f"You are a World-Class Chief Data Analytics Officer. Review this enterprise dataset summary information. "
-                        f"Provide a beautifully structured report using neat markdown bullets. Key areas: Principal Findings, "
-                        f"and Executive Strategic Action Plan. Ingested Data Context:\n{sample_str}"
+                        f"You are a World-Class Chief Data Analytics Officer. Review this filtered enterprise dataset context. "
+                        f"Provide a beautifully structured report using neat markdown bullets. Key areas: Principal Findings "
+                        f"for filter value '{selected_cat}', and Executive Strategic Action Plan. Context Data:\n{sample_str}"
                     )
                     response = model.generate_content(summary_prompt)
                     st.session_state.auto_summary = response.text
@@ -253,16 +308,16 @@ if uploaded_file:
         down_col1, down_col2, down_col3 = st.columns(3)
         
         with down_col1:
-            excel_bytes = convert_df_to_excel(df)
+            excel_bytes = convert_df_to_excel(filtered_df)
             st.download_button(
                 label="🟢 Export Ingested Spreadsheet (.XLSX)",
                 data=excel_bytes,
-                file_name="Dataset_Matrix_Master.xlsx",
+                file_name="Filtered_Dataset_Master.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
             
         with down_col2:
-            docx_bytes = create_docx_report(st.session_state.auto_summary, df, cat_target, num_target, numeric_cols)
+            docx_bytes = create_docx_report(st.session_state.auto_summary, filtered_df, cat_target, num_target, numeric_cols)
             st.download_button(
                 label="🔵 Export Insights Document (.DOCX)",
                 data=docx_bytes,
@@ -289,26 +344,23 @@ if uploaded_file:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
                 
-        if user_query := st.chat_input("Ask any analytical question or ask to explain rows..."):
+        if user_query := st.chat_input("Ask any analytical question..."):
             with st.chat_message("user"):
                 st.markdown(user_query)
             st.session_state.messages.append({"role": "user", "content": user_query})
             
-            summary_stats = df.describe(include='all').to_string()
-            data_matrix_snapshot = df.head(25).to_string()
+            summary_stats = filtered_df.describe(include='all').to_string()
+            data_matrix_snapshot = filtered_df.head(25).to_string()
             
             system_context_prompt = (
                 f"SYSTEM INSTRUCTIONS:\n"
-                f"You are a highly capable, human-like Senior Data Scientist and Lead Business Intelligence Consultant. "
-                f"Your goal is to perfectly interpret user messages and provide answers like a smart human analyst. "
-                f"Analyze the user's question explicitly using the dataset context provided below.\n\n"
+                f"You are a highly capable Senior Data Scientist. Analyze the user's question explicitly using this context.\n\n"
                 f"DATASET MATRIX PROFILE:\n"
-                f"- Dimensions: {df.shape[0]} rows, {df.shape[1]} columns.\n"
-                f"- Column Names: {', '.join(df.columns.tolist())}\n"
+                f"- Dimensions: {filtered_df.shape[0]} rows, {filtered_df.shape[1]} columns.\n"
                 f"- Statistical Properties Summary:\n{summary_stats}\n"
-                f"- Target Snapshot Rows (Top Sample Data):\n{data_matrix_snapshot}\n\n"
+                f"- Target Snapshot Rows:\n{data_matrix_snapshot}\n\n"
                 f"User Request: '{user_query}'\n\n"
-                f"Response (Be clear, concise, use clean formatting, state figures if asked, act professional):"
+                f"Response:"
             )
             
             with st.chat_message("assistant"):
@@ -319,7 +371,7 @@ if uploaded_file:
                         st.markdown(clean_reply)
                         st.session_state.messages.append({"role": "assistant", "content": clean_reply})
                     except Exception as e:
-                        error_reply = f"AI API Connection Error: {str(e)}. Please verify your GEMINI_API_KEY environment configuration on Render."
+                        error_reply = f"AI API Connection Error: {str(e)}."
                         st.markdown(error_reply)
                         st.session_state.messages.append({"role": "assistant", "content": error_reply})
             
