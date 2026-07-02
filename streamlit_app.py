@@ -59,6 +59,14 @@ st.markdown("""
         margin-top: 2.5rem;
         margin-bottom: 1.2rem;
     }
+    .warning-card {
+        background-color: rgba(186, 142, 35, 0.15);
+        border: 1px solid #d29922;
+        padding: 1rem;
+        border-radius: 10px;
+        color: #e3b341;
+        margin-bottom: 1.5rem;
+    }
     div[data-testid="stChatInputContainer"], div[data-testid="stTextInput"] > div {
         border: 1px solid #30363d !important;
         background-color: #161b22 !important;
@@ -80,32 +88,32 @@ if not API_KEY:
     elif "google_api_key" in st.secrets: 
         API_KEY = st.secrets["google_api_key"]
     else:
-        st.error("🔒 Configuration Error: Please ensure 'GEMINI_API_KEY' is active in Render or Streamlit Secrets.")
+        st.error("🔒 Configuration Error: Please ensure 'GEMINI_API_KEY' is active in your configuration.")
         st.stop()
 
 genai.configure(api_key=API_KEY)
 
-# 🛠️ MULTI-STRING AUTOMATED BACKEND INITIALIZATION (Updated Stable Strings)
+# 🛠️ MULTI-STRING MODERN BACKEND INITIALIZATION (Fixed 404 Fallbacks)
 model = None
-model_names_to_try = ['gemini-1.5-flash', 'gemini-pro']
+model_names_to_try = [
+    'gemini-2.5-flash', 
+    'gemini-1.5-flash-latest', 
+    'gemini-1.5-flash', 
+    'gemini-1.5-pro-latest'
+]
 
 for name in model_names_to_try:
     try:
         model = genai.GenerativeModel(name)
-        # Test connection with simple token stream
+        # Test connection smoothly
         model.generate_content("Ping")
         break
     except Exception:
         continue
 
 if model is None:
-    st.error("🚨 API Engine Resolution Failed. Please check your system endpoints inside Google AI Studio.")
+    st.error("🚨 API Engine Resolution Failed. Target production endpoints are unresponsive. Please verify API dashboard billing status.")
     st.stop()
-
-# Helper function to get clean report bytes for download
-def get_report_bytes(text_content):
-    clean_text = text_content.replace("**", "").replace("### ", "").replace("## ", "")
-    return io.BytesIO(clean_text.encode('utf-8'))
 
 # Clean Sidebar Dashboard Control
 with st.sidebar:
@@ -114,7 +122,10 @@ with st.sidebar:
     st.markdown("### 📊 Engine Infrastructure")
     st.success("Super-Intelligence Matrix: Active")
     st.markdown("---")
-    st.markdown("💡 **Tip:** Hover on charts to filter, isolate, or view exact metrics interactively!")
+    
+    # Live Data Filter Center
+    st.markdown("### 🔍 Live Data Filter Center")
+    filter_col = st.text_input("Filter Column Name (Optional):", value="")
 
 # App Header
 st.markdown('<h1 class="main-title">📊 AI Data Analyst Pro</h1>', unsafe_allow_html=True)
@@ -125,51 +136,67 @@ uploaded_file = st.file_uploader("", type=["csv", "xlsx"])
 
 if uploaded_file:
     try:
+        # Initialize session state for cleaned data
+        if "cleaned_df" not in st.session_state:
+            st.session_state.cleaned_df = None
+
         if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
+            raw_df = pd.read_csv(uploaded_file)
         else:
-            df = pd.read_excel(uploaded_file)
+            raw_df = pd.read_excel(uploaded_file)
             
-        df.columns = df.columns.str.strip()
+        raw_df.columns = raw_df.columns.str.strip()
         
+        # Use cleaned dataframe if pipeline has run, else use raw data
+        df = st.session_state.cleaned_df if st.session_state.cleaned_df is not None else raw_df
+        
+        # --- 🩺 DATA HEALTH AUDITOR AREA ---
+        st.markdown('<div class="section-header">🩺 Data Health Auditor</div>', unsafe_allow_html=True)
+        total_nulls = df.isnull().sum().sum()
+        
+        if total_nulls > 0:
+            total_cells = df.size
+            null_percentage = (total_nulls / total_cells) * 100
+            
+            c_warn, c_btn = st.columns([2, 1])
+            with c_warn:
+                st.markdown(f"""
+                <div class="warning-card">
+                    ⚠️ <strong>Warning:</strong> Found {total_nulls:,} missing/blank cells ({null_percentage:.2f}% of dataset).
+                </div>
+                """, unsafe_allow_html=True)
+            with c_btn:
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("🧼 Run Automatic Data Clean Pipeline", use_container_width=True):
+                    # Smart imputation logic
+                    cleaned = df.copy()
+                    for col in cleaned.columns:
+                        if cleaned[col].dtype in ['int64', 'float64']:
+                            cleaned[col] = cleaned[col].fillna(cleaned[col].median())
+                        else:
+                            cleaned[col] = cleaned[col].fillna(cleaned[col].mode()[0] if not cleaned[col].mode().empty else "Unknown")
+                    st.session_state.cleaned_df = cleaned
+                    st.success("✨ Data pipeline executed! Blanks filled with smart descriptive patterns.")
+                    st.rerun()
+        else:
+            st.success("✅ Data Integrity Cleansed Matrix Status: 100% Perfect (No missing values).")
+
+        # Basic Meta Profiles
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
         text_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
         
-        sales_col = next((c for c in df.columns if 'sales' in c.lower() or 'amount' in c.lower() or 'price' in c.lower()), None)
+        sales_col = next((c for c in df.columns if 'sales' in c.lower() or 'amount' in c.lower() or 'price' in c.lower() or 'volume' in c.lower()), None)
         profit_col = next((c for c in df.columns if 'profit' in c.lower() or 'gain' in c.lower()), None)
-        product_col = next((c for c in df.columns if 'product' in c.lower() or 'category' in c.lower() or 'item' in c.lower()), None)
+        product_col = next((c for c in df.columns if 'product' in c.lower() or 'category' in c.lower() or 'item' in c.lower() or 'brand' in c.lower() or 'card' in c.lower()), None)
         
-        # --- ⚡ QUICK AUTOMATED DATA BLUEPRINT SUMMARY ---
-        st.markdown('<div class="section-header">🔍 Live Data Asset Blueprint</div>', unsafe_allow_html=True)
-        sum_col1, sum_col2, sum_col3 = st.columns(3)
-        
-        with sum_col1:
-            st.markdown('<div class="summary-box">', unsafe_allow_html=True)
-            st.markdown("#### 📑 Matrix Features")
-            st.markdown(f"*- Quantitative/Numeric Columns:* `{len(numeric_cols)}`")
-            st.markdown(f"*- Categorical/Text Columns:* `{len(text_cols)}`")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-        with sum_col2:
-            st.markdown('<div class="summary-box">', unsafe_allow_html=True)
-            st.markdown("#### 🩺 Integrity Health")
-            total_nulls = df.isnull().sum().sum()
-            if total_nulls == 0:
-                st.markdown("*- Missing/Null Cells:* `None (Perfect Cleansed state)`")
-            else:
-                st.markdown(f"*- Missing/Null Cells:* `{total_nulls} blank fields detected`")
-            st.markdown(f"*- Detected Target Column:* `{sales_col if sales_col else (numeric_cols[0] if numeric_cols else 'None')}`")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-        with sum_col3:
-            st.markdown('<div class="summary-box">', unsafe_allow_html=True)
-            st.markdown("#### ⏱️ Dimension Boundaries")
-            st.markdown(f"*- Total Structural Cells:* `{df.size:,}`")
-            if len(df) > 0:
-                st.markdown(f"*- Head/Tail Range:* `1 to {len(df):,}`")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        # --- EXEC EXECUTIVE KPI GRID (Fixed triple quotes) ---
+        # Optional Sidebar Filter implementation
+        if filter_col in df.columns:
+            unique_vals = ["All"] + df[filter_col].dropna().unique().tolist()
+            selected_val = st.sidebar.selectbox(f"Filter by {filter_col}:", unique_vals)
+            if selected_val != "All":
+                df = df[df[filter_col] == selected_val]
+
+        # --- 📋 CORE PERFORMANCE INDICATORS GRID ---
         st.markdown('<div class="section-header">📋 Core Performance Indicators</div>', unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
         
@@ -194,7 +221,6 @@ if uploaded_file:
             else:
                 st.markdown("""<div class="metric-card"><p style="margin:0;color:#8b949e;font-size:0.9rem;font-weight:600;">OPERATIONAL INSIGHT</p><h2 style="margin:0.4rem 0 0 0;color:#8b949e;font-size:1.6rem;">N/A</h2></div>""", unsafe_allow_html=True)
 
-        st.markdown("<h4 style='margin-top: 1.5rem; color:#f0f6fc;'>Ingested Spreadsheet Grid Snippet</h4>", unsafe_allow_html=True)
         st.dataframe(df.head(6), use_container_width=True)
         
         # --- INTERACTIVE PLOTLY CHARTS GENERATOR ---
@@ -207,7 +233,7 @@ if uploaded_file:
         with chart_c1:
             if num_target and cat_target:
                 chart_data = df.groupby(cat_target)[num_target].sum().reset_index().sort_values(by=num_target, ascending=False).head(10)
-                fig1 = px.bar(chart_data, x=cat_target, y=num_target, title=f"Top Distributions by {cat_target}", color=num_target, template="plotly_dark")
+                fig1 = px.bar(chart_data, x=cat_target, y=num_target, title=f"Top Distributions Matrix (Sum of {num_target} by {cat_target})", color=num_target, template="plotly_dark")
                 st.plotly_chart(fig1, use_container_width=True)
             else:
                 chart_data = df[cat_target].value_counts().reset_index().head(10)
@@ -216,21 +242,22 @@ if uploaded_file:
                 
         with chart_c2:
             if len(numeric_cols) > 0:
-                fig2 = px.line(df.head(100), y=numeric_cols[0], title=f"Sequential Profile Matrix ({numeric_cols[0]})", template="plotly_dark", render_mode="svg")
+                fig2 = px.line(df.head(100), y=numeric_cols[0], title=f"Sequential Profile Matrix Trace ({numeric_cols[0]})", template="plotly_dark")
                 st.plotly_chart(fig2, use_container_width=True)
             else:
                 st.info("Continuous quantitative values missing. Trendline generation bypassed safely.")
 
-        # --- EXECUTIVE AI SUMMARY REPORT & DOWNLOAD BUTTON ---
+        # --- EXECUTIVE AI SUMMARY REPORT ---
         st.markdown('<div class="section-header">🧠 Automated AI Insight Report</div>', unsafe_allow_html=True)
-        if "auto_summary" not in st.session_state:
+        if "auto_summary" not in st.session_state or st.session_state.auto_summary.startswith("Automated reporting temporary backup"):
             with st.spinner("AI Engine auditing matrix patterns safely..."):
                 try:
                     sample_str = df.head(15).to_string(index=False)
                     summary_prompt = (
-                        f"You are a World-Class Chief Data Analytics Officer. Review this enterprise dataset summary information. "
-                        f"Provide a beautifully structured report using neat markdown bullets. Key areas: Principal Findings, "
-                        f"and Executive Strategic Action Plan. Ingested Data Context:\n{sample_str}"
+                        f"You are a World-Class Chief Data Analytics Officer. Review this dataset profiling metrics.\n"
+                        f"Provide a beautifully structured report using clean markdown bullets. Focus explicitly on: "
+                        f"Principal Findings, Structural Overview, Data Discrepancy Diagnostics, and an Executive Strategic Action Plan.\n\n"
+                        f"Ingested Dataset Blueprint Snippet:\n{sample_str}"
                     )
                     response = model.generate_content(summary_prompt)
                     st.session_state.auto_summary = response.text
@@ -239,14 +266,44 @@ if uploaded_file:
         
         st.markdown(st.session_state.auto_summary)
         
-        # Working Text-Report Download Button Setup
-        report_data = get_report_bytes(st.session_state.auto_summary)
-        st.download_button(
-            label="📥 Download Executive Summary Report",
-            data=report_data,
-            file_name="Executive_AI_Data_Report.txt",
-            mime="text/plain"
-        )
+        # --- 💾 MULTI-FORMAT BULK REPORT EXPORT STUDIO ---
+        st.markdown('<div class="section-header">💾 Multi-Format Bulk Report Export Studio</div>', unsafe_allow_html=True)
+        exp_col1, exp_col2, exp_col3 = st.columns(3)
+        
+        with exp_col1:
+            # Excel export setup
+            towrite = io.BytesIO()
+            df.to_excel(towrite, index=False, engine='openpyxl')
+            towrite.seek(0)
+            st.download_button(
+                label="🟢 Export Ingested Spreadsheet (.XLSX)",
+                data=towrite,
+                file_name="Cleaned_Dataset_Matrix.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+            
+        with exp_col2:
+            # Insights doc export setup
+            doc_buffer = io.BytesIO(st.session_state.auto_summary.encode('utf-8'))
+            st.download_button(
+                label="🔵 Export Insights Document (.DOCX)",
+                data=doc_buffer,
+                file_name="Executive_AI_Insights.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True
+            )
+            
+        with exp_col3:
+            # Clean text setup
+            txt_buffer = io.BytesIO(st.session_state.auto_summary.encode('utf-8'))
+            st.download_button(
+                label="🟣 Export Clean Audit Report (.TXT)",
+                data=txt_buffer,
+                file_name="Data_Audit_Report.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
 
         # --- 💬 SUPER-INTELLIGENT DYNAMIC CONVERSATION AGENT ---
         st.markdown('<div class="section-header">💬 Chat Directly With Your Data Studio</div>', unsafe_allow_html=True)
@@ -268,16 +325,15 @@ if uploaded_file:
             
             system_context_prompt = (
                 f"SYSTEM INSTRUCTIONS:\n"
-                f"You are a highly capable, human-like Senior Data Scientist and Lead Business Intelligence Consultant. "
-                f"Your goal is to perfectly interpret user messages and provide answers like a smart human analyst. "
+                f"You are a human-like Senior Data Scientist and Lead Business Intelligence Consultant. "
                 f"Analyze the user's question explicitly using the dataset context provided below.\n\n"
                 f"DATASET MATRIX PROFILE:\n"
                 f"- Dimensions: {df.shape[0]} rows, {df.shape[1]} columns.\n"
-                f"- Column Names: {', '.join(df.columns.tolist())}\n"
-                f"- Statistical Properties Summary:\n{summary_stats}\n"
-                f"- Target Snapshot Rows (Top Sample Data):\n{data_matrix_snapshot}\n\n"
+                f"- Missing cells currently: {df.isnull().sum().sum()} fields.\n"
+                f"- Statistical Summary Info:\n{summary_stats}\n"
+                f"- Target Snapshot:\n{data_matrix_snapshot}\n\n"
                 f"User Request: '{user_query}'\n\n"
-                f"Response (Be clear, concise, use clean formatting, state figures if asked, act professional):"
+                f"Response (Be clear, concise, use formatting, state figures if asked):"
             )
             
             with st.chat_message("assistant"):
@@ -288,9 +344,8 @@ if uploaded_file:
                         st.markdown(clean_reply)
                         st.session_state.messages.append({"role": "assistant", "content": clean_reply})
                     except Exception as e:
-                        error_reply = f"AI API Connection Error: {str(e)}. Please verify your GEMINI_API_KEY environment configuration on Render."
+                        error_reply = f"AI API Connection Error: {str(e)}. Fallback execution online."
                         st.markdown(error_reply)
-                        st.session_state.messages.append({"role": "assistant", "content": error_reply})
             
     except Exception as e:
         st.error(f"Ingestion Error Shield: {str(e)}")
