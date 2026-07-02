@@ -2,7 +2,7 @@ import streamlit as st
 import pypdf
 import json
 from io import BytesIO
-import google.generativeai as genai
+from groq import Groq
 
 # Page configuration
 st.set_page_config(
@@ -12,24 +12,25 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize Gemini API
-def initialize_gemini():
-    """Initialize Gemini API with user's API key"""
-    api_key = st.secrets.get("GEMINI_API_KEY")
+# Initialize Groq API
+def initialize_groq():
+    """Initialize Groq API with user's API key"""
+    api_key = st.secrets.get("GROQ_API_KEY")
     if not api_key:
-        st.warning("⚠️ Gemini API key not found in secrets. Please add GEMINI_API_KEY to your Streamlit secrets.")
-        return False
-    genai.configure(api_key=api_key)
-    return True
+        st.warning("⚠️ Groq API key not found in secrets. Please add GROQ_API_KEY to your Streamlit secrets.")
+        return None
+    return Groq(api_key=api_key)
 
-# Evaluation function using Gemini
+# Evaluation function using Groq
 def evaluate_candidate(resume_text, job_description):
     """
-    Use Gemini 1.5 Flash to evaluate candidate match
+    Use Groq with Llama 3.3 70B to evaluate candidate match
     Returns structured JSON with evaluation metrics
     """
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        client = initialize_groq()
+        if not client:
+            return None
         
         prompt = f"""
         You are an expert HR recruiter. Analyze the following resume against the job description and provide a structured JSON response.
@@ -52,18 +53,29 @@ def evaluate_candidate(resume_text, job_description):
         Respond ONLY with valid JSON, no other text.
         """
         
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
+        message = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            model="llama-3.3-70b-versatile",
+            temperature=0.3,
+            max_tokens=1024,
+        )
+        
+        response_text = message.choices[0].message.content.strip()
         
         # Parse JSON response
         evaluation_data = json.loads(response_text)
         return evaluation_data
         
     except json.JSONDecodeError as e:
-        st.error(f"❌ Error parsing Gemini response: {str(e)}")
+        st.error(f"❌ Error parsing Groq response: {str(e)}")
         return None
     except Exception as e:
-        st.error(f"❌ Error calling Gemini API: {str(e)}")
+        st.error(f"❌ Error calling Groq API: {str(e)}")
         return None
 
 # Render evaluation cards
@@ -134,7 +146,7 @@ def render_evaluation_cards(evaluation_data):
 
 # Title
 st.title("👔 AI HR Recruitment Agent")
-st.markdown("Powered by Google Gemini AI")
+st.markdown("Powered by Groq AI")
 st.markdown("---")
 
 # Main layout with columns
@@ -227,15 +239,15 @@ col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 1])
 with col_btn2:
     if st.button("🚀 Evaluate Candidate", use_container_width=True, type="primary"):
         if resume_text and job_description:
-            # Check if Gemini API is initialized
-            if initialize_gemini():
+            # Check if Groq API is initialized
+            if initialize_groq():
                 with st.spinner("🔄 Analyzing candidate with AI..."):
                     evaluation_result = evaluate_candidate(resume_text, job_description)
                     if evaluation_result:
                         st.session_state.evaluation_result = evaluation_result
                         st.success("✨ Evaluation complete!")
             else:
-                st.error("❌ Gemini API is not configured. Please set up your API key.")
+                st.error("❌ Groq API is not configured. Please set up your API key.")
         else:
             st.error("❌ Please upload a resume and enter a job description before evaluating.")
 
@@ -266,16 +278,16 @@ with st.sidebar:
     
     st.markdown("---")
     st.subheader("🔑 API Configuration")
-    api_key_status = "✅ Configured" if st.secrets.get("GEMINI_API_KEY") else "❌ Not Configured"
-    st.write(f"Gemini API: {api_key_status}")
+    api_key_status = "✅ Configured" if st.secrets.get("GROQ_API_KEY") else "❌ Not Configured"
+    st.write(f"Groq API: {api_key_status}")
     
     st.markdown("---")
     st.info(
         "💡 **About this tool:**\n\n"
         "This AI HR Recruitment Agent helps match candidates to job descriptions by:\n"
         "- Extracting resume content from PDF files\n"
-        "- Using Google Gemini AI to analyze qualifications\n"
+        "- Using Groq AI with Llama 3.3 70B for analysis\n"
         "- Comparing with job requirements\n"
         "- Generating a detailed match score and feedback\n\n"
-        "**Powered by:** Google Gemini 1.5 Flash"
+        "**Powered by:** Groq API with Llama 3.3 70B Versatile"
     )
