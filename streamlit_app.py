@@ -3,7 +3,6 @@ import streamlit as st
 import pandas as pd
 import google.generativeai as genai
 import plotly.express as px
-from fpdf import FPDF
 import io
 
 # Page configuration - Premium Analytics Theme
@@ -95,26 +94,10 @@ if model is None:
     st.error("🚨 API Engine Resolution Failed. Check your Gemini API Key parameters inside Google AI Studio.")
     st.stop()
 
-# Helper function to generate a clean PDF byte-stream
-def create_pdf(text_content):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Helvetica", size=12)
-    
-    # Title
-    pdf.set_text_color(88, 166, 255)
-    pdf.cell(200, 10, txt="AI Data Analyst - Executive Strategic Report", ln=True, align='C')
-    pdf.ln(10)
-    
-    # Body Content
-    pdf.set_text_color(30, 30, 30)
-    # Cleaning up markdown formatting markers for PDF safety
-    clean_text = text_content.replace("**", "").replace("*", "-")
-    
-    for line in clean_text.split('\n'):
-        pdf.multi_cell(0, 7, txt=line.encode('latin-1', 'replace').decode('latin-1'))
-    
-    return pdf.output()
+# Helper function to get clean report bytes for download
+def get_report_bytes(text_content):
+    clean_text = text_content.replace("**", "").replace("### ", "").replace("## ", "")
+    return io.BytesIO(clean_text.encode('utf-8'))
 
 # Clean Sidebar Dashboard Control
 with st.sidebar:
@@ -176,7 +159,7 @@ if uploaded_file:
         st.markdown("<h4 style='margin-top: 1.5rem; color:#f0f6fc;'>Ingested Spreadsheet Grid Snippet</h4>", unsafe_allow_html=True)
         st.dataframe(df.head(6), use_container_width=True)
         
-        # --- FEATURE 1: INTERACTIVE PLOTLY CHARTS GENERATOR ---
+        # --- INTERACTIVE PLOTLY CHARTS GENERATOR ---
         st.markdown('<div class="section-header">📊 Dynamic Interactive Trend Matrix</div>', unsafe_allow_html=True)
         chart_c1, chart_c2 = st.columns(2)
         
@@ -200,7 +183,7 @@ if uploaded_file:
             else:
                 st.info("Continuous quantitative values missing. Trendline generation bypassed safely.")
 
-        # --- EXECUTIVE AI SUMMARY REPORT & FEATURE 4: PDF DOWNLOAD ---
+        # --- EXECUTIVE AI SUMMARY REPORT & DOWNLOAD BUTTON ---
         st.markdown('<div class="section-header">🧠 Automated AI Insight Report</div>', unsafe_allow_html=True)
         if "auto_summary" not in st.session_state:
             with st.spinner("AI Engine auditing matrix patterns safely..."):
@@ -218,17 +201,14 @@ if uploaded_file:
         
         st.markdown(st.session_state.auto_summary)
         
-        # Feature 4: Creating PDF Trigger Box
-        try:
-            pdf_bytes = create_pdf(st.session_state.auto_summary)
-            st.download_button(
-                label="📥 Download Executive Summary (PDF)",
-                data=pdf_bytes,
-                file_name="Executive_AI_Data_Report.pdf",
-                mime="application/pdf"
-            )
-        except Exception as pdf_err:
-            st.warning(f"PDF compilation bridge idling: {str(pdf_err)}")
+        # Working Text-Report Download Button Setup
+        report_data = get_report_bytes(st.session_state.auto_summary)
+        st.download_button(
+            label="📥 Download Executive Summary Report",
+            data=report_data,
+            file_name="Executive_AI_Data_Report.txt",
+            mime="text/plain"
+        )
 
         # --- 💬 SUPER-INTELLIGENT DYNAMIC CONVERSATION AGENT ---
         st.markdown('<div class="section-header">💬 Chat Directly With Your Data Studio</div>', unsafe_allow_html=True)
