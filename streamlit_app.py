@@ -1,4 +1,13 @@
+import os
 import streamlit as st
+
+# API key ko environment variable se uthaein
+api_key = os.environ.get("GEMINI_API_KEY")
+
+if not api_key:
+    st.error("GEMINI_API_KEY set nahi hai!")
+else:
+    # Yahan apna genai wala code likhiyeimport streamlit as st
 import pandas as pd
 
 # Safe library import with fallback
