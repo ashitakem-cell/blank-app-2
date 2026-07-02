@@ -5,3 +5,4 @@ google-generativeai
 plotly
 python-docx
 matplotlib
+scikit-learn
