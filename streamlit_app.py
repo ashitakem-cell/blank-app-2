@@ -206,7 +206,7 @@ if uploaded_file:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
                 
-      if user_query := st.chat_input("Ask any analytical question or ask to explain rows..."):
+        if user_query := st.chat_input("Ask any analytical question or ask to explain rows..."):
             with st.chat_message("user"):
                 st.markdown(user_query)
             st.session_state.messages.append({"role": "user", "content": user_query})
