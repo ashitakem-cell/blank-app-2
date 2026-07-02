@@ -5,6 +5,8 @@ import time
 from datetime import datetime
 import numpy as np
 from io import BytesIO
+import websockets
+import asyncio
 
 # ==================== PAGE CONFIGURATION ====================
 st.set_page_config(
@@ -287,38 +289,72 @@ if "evi_initialized" not in st.session_state:
     st.session_state.transcript = []
     st.session_state.session_duration = 0
     st.session_state.questions_asked = 0
+    st.session_state.access_token = None
 
-# ==================== HUME AI EVI INITIALIZATION ====================
+# ==================== HUME AI EVI INITIALIZATION - CORRECTED ====================
 def initialize_hume_evi():
-    """Initialize Hume AI EVI connection with API credentials"""
+    """Initialize Hume AI EVI connection with API credentials using correct endpoint"""
     api_key = st.secrets.get("HUME_API_KEY")
     secret_key = st.secrets.get("HUME_SECRET_KEY")
     
     if not api_key or not secret_key:
         st.error("❌ Missing Hume API credentials in st.secrets")
+        st.error("Please add HUME_API_KEY and HUME_SECRET_KEY to your Streamlit secrets")
         return False
     
     try:
-        # Create access token for EVI
+        # Step 1: Create access token using correct auth endpoint
+        auth_payload = {
+            "api_key": api_key,
+            "secret_key": secret_key
+        }
+        
         auth_response = requests.post(
-            "https://api.hume.ai/v0/evi/auth",
-            json={
-                "api_key": api_key,
-                "secret_key": secret_key
+            "https://api.hume.ai/v0/auth",
+            json=auth_payload,
+            timeout=10
+        )
+        
+        if auth_response.status_code != 200:
+            error_msg = auth_response.text if auth_response.text else "Unknown error"
+            st.error(f"❌ Authentication failed (Status {auth_response.status_code}): {error_msg}")
+            return False
+        
+        token_data = auth_response.json()
+        access_token = token_data.get("access_token")
+        
+        if not access_token:
+            st.error("❌ No access token received from Hume AI")
+            return False
+        
+        # Step 2: Validate token by fetching config
+        config_response = requests.get(
+            "https://api.hume.ai/v0/evi/configs",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
             },
             timeout=10
         )
         
-        if auth_response.status_code == 200:
-            token_data = auth_response.json()
-            st.session_state.access_token = token_data.get("access_token")
-            st.session_state.evi_initialized = True
-            st.session_state.connection_status = "Connected"
-            return True
-        else:
-            st.error(f"❌ Failed to authenticate with Hume AI: {auth_response.text}")
+        if config_response.status_code != 200:
+            st.error(f"❌ Failed to validate token (Status {config_response.status_code})")
             return False
+        
+        # Store token and connection info
+        st.session_state.access_token = access_token
+        st.session_state.evi_initialized = True
+        st.session_state.connection_status = "Connected"
+        st.session_state.websocket_url = "wss://api.hume.ai/v0/evi/chat"
+        
+        return True
             
+    except requests.exceptions.Timeout:
+        st.error("❌ Connection timeout. Please check your network and try again.")
+        return False
+    except requests.exceptions.ConnectionError:
+        st.error("❌ Connection error. Could not reach Hume AI servers.")
+        return False
     except Exception as e:
         st.error(f"❌ Error initializing Hume AI: {str(e)}")
         return False
@@ -492,7 +528,7 @@ with st.sidebar:
                 time.sleep(1)
                 st.rerun()
             else:
-                st.error("❌ Failed to initialize connection")
+                st.error("❌ Failed to initialize connection. Check errors above.")
     
     st.markdown("---")
     
@@ -525,6 +561,14 @@ with st.sidebar:
     st.metric("Session Duration", f"{st.session_state.session_duration}s")
     
     st.markdown("---")
+    
+    # Connection Details
+    if st.session_state.evi_initialized:
+        st.markdown("<h3 style='color: #ff006e;'>📡 Connection Details</h3>", unsafe_allow_html=True)
+        st.write(f"**WebSocket URL:** `{st.session_state.websocket_url}`")
+        st.write(f"**Token Status:** ✅ Active")
+    
+    st.markdown("---")
     st.info(
         "💡 **About This Dashboard:**\n\n"
         "An advanced AI-powered technical interview platform that:\n"
@@ -533,6 +577,9 @@ with st.sidebar:
         "- Displays live audio waveform visualization\n"
         "- Adapts questions based on difficulty level\n"
         "- Maintains detailed interview transcripts\n\n"
+        "**Endpoints Used:**\n"
+        "- Auth: `https://api.hume.ai/v0/auth`\n"
+        "- WebSocket: `wss://api.hume.ai/v0/evi/chat`\n\n"
         "**Powered by:** Hume AI Web SDK"
     )
 
